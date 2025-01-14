@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>WE Crawl - Resultados da Análise</h2>
+    <p class="text-muted">
+        Análise do site: 
+        <strong>
+            {% if config.site %}
+                {{ config.site.name }}
+            {% else %}
+                {{ project.client_site_name }}
+            {% endif %}
+        </strong>
+    </p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Informações da Análise</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li><strong>Status:</strong> 
+                            <span class="badge {% if config.status == 'completed' %}bg-success
+                                         {% elif config.status == 'running' %}bg-primary
+                                         {% elif config.status == 'error' %}bg-danger
+                                         {% else %}bg-secondary{% endif %}">
+                                {{ config.status }}
+                            </span>
+                        </li>
+                        <li><strong>Data:</strong> {{ config.created_at.strftime('%d/%m/%Y %H:%M') }}</li>
+                        <li><strong>Máximo de Páginas:</strong> {{ config.max_pages }}</li>
+                        <li><strong>Profundidade:</strong> {{ config.max_depth }}</li>
+                        <li><strong>Palavras-chave:</strong> {{ config.keywords or 'Nenhuma' }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Estatísticas</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li><strong>Total de Páginas:</strong> {{ config.results|length }}</li>
+                        <li><strong>Total de Links:</strong> {{ config.results[0].links.count() if config.results else 0 }}</li>
+                        <li><strong>Clusters Encontrados:</strong> {{ config.results|map(attribute='cluster')|unique|list|length }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Clusters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Gráfico de Clusters</h5>
+        </div>
+        <div class="card-body">
+            <div id="cluster-graph" style="height: 600px;"></div>
+        </div>
+    </div>
+
+    <!-- Lista de URLs e Keywords -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">URLs e Palavras-chave</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>URL</th>
+                            <th>Cluster</th>
+                            <th>Palavras-chave</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in config.results %}
+                        <tr>
+                            <td><a href="{{ result.url }}" target="_blank">{{ result.url }}</a></td>
+                            <td>{{ result.cluster }}</td>
+                            <td>{{ result.keywords }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('crawl_config', project_id=project.id) }}" class="btn btn-secondary">Voltar</a>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Buscar dados do gráfico via AJAX
+    fetch(`/api/project/{{ project.id }}/crawl/{{ config.id }}/graph`)
+        .then(response => response.json())
+        .then(data => {
+            Plotly.newPlot('cluster-graph', data.data, data.layout);
+        })
+        .catch(error => {
+            console.error('Error loading graph:', error);
+            document.getElementById('cluster-graph').innerHTML = 
+                '<div class="alert alert-danger">Erro ao carregar o gráfico</div>';
+        });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

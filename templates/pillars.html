@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <h1 class="text-center mb-4">Gerenciar Pilares</h1>
+        
+        <!-- Formulário de Novo Pilar -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Novo Pilar</h5>
+                <button type="button" class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#newPillarForm">
+                    <i class="bi bi-plus"></i> Adicionar Pilar
+                </button>
+            </div>
+            <div class="card-body collapse" id="newPillarForm">
+                <form id="pillarForm">
+                    <div class="mb-3">
+                        <label for="pillarName" class="form-label">Nome do Pilar</label>
+                        <input type="text" class="form-control" id="pillarName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pillarDescription" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="pillarDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pillarWeight" class="form-label">Peso (1-10)</label>
+                        <input type="number" class="form-control" id="pillarWeight" min="1" max="10" value="5" required>
+                        <small class="text-muted">O sistema calculará automaticamente a porcentagem com base nos pesos de todos os pilares</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar Pilar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista de Pilares -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Pilares Cadastrados</h5>
+            </div>
+            <div class="card-body">
+                <div id="pillarsList">
+                    <!-- Lista de pilares será carregada aqui -->
+                </div>
+                
+                <!-- Gráfico de distribuição de pesos -->
+                <div class="mt-4">
+                    <h6>Distribuição dos Pesos</h6>
+                    <div class="progress" style="height: 25px;">
+                        <!-- Barras de progresso serão adicionadas aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição -->
+<div class="modal fade" id="editPillarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Pilar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPillarForm">
+                    <input type="hidden" id="editPillarId">
+                    <div class="mb-3">
+                        <label for="editPillarName" class="form-label">Nome do Pilar</label>
+                        <input type="text" class="form-control" id="editPillarName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPillarDescription" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="editPillarDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPillarWeight" class="form-label">Peso (1-10)</label>
+                        <input type="number" class="form-control" id="editPillarWeight" min="1" max="10" value="5" required>
+                        <small class="text-muted">O sistema calculará automaticamente a porcentagem com base nos pesos de todos os pilares</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger me-2" id="btnDeletePillar">Excluir</button>
+                <button type="button" class="btn btn-primary" id="btnSaveEdit">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Aviso -->
+<div class="modal fade" id="weightWarningModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atenção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>A soma dos pesos dos pilares deve ser exatamente 100%.</p>
+                <p>Peso total atual: <span id="totalWeight">0</span>%</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pillars.js') }}"></script>
+{% endblock %}

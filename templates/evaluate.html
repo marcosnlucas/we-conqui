@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 me-3">Avaliação do Site:</h2>
+            <select class="form-select" style="max-width: 300px;" id="siteSelect">
+                {% for site in sites %}
+                <option value="{{ site.id }}" data-url="{{ site.url }}">{{ site.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <!-- URL do site -->
+        <p class="text-muted mb-4">URL: <a href="#" id="siteUrl" target="_blank"></a></p>
+        
+        <!-- Lista de Pilares -->
+        <div id="pillarsList">
+            <!-- Os pilares e questões serão carregados aqui -->
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="d-flex justify-content-between mt-4 mb-5">
+            <button class="btn btn-secondary" id="btnVoltar">Voltar</button>
+            <button class="btn btn-primary" id="btnSalvar">Salvar Avaliação</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="saveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Deseja salvar esta avaliação?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarSalvar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const projectId = window.location.pathname.split('/')[2];
+    const pillarsListDiv = document.getElementById('pillarsList');
+    const btnSalvar = document.getElementById('btnSalvar');
+    const btnVoltar = document.getElementById('btnVoltar');
+    const saveModal = new bootstrap.Modal(document.getElementById('saveModal'));
+    const siteSelect = document.getElementById('siteSelect');
+    const siteUrl = document.getElementById('siteUrl');
+    
+    // Atualizar URL quando o site for selecionado
+    function updateSiteUrl() {
+        const selectedOption = siteSelect.options[siteSelect.selectedIndex];
+        const url = selectedOption.dataset.url;
+        siteUrl.href = url;
+        siteUrl.textContent = url;
+    }
+    
+    // Event listener para mudança no select
+    siteSelect.addEventListener('change', function() {
+        updateSiteUrl();
+        loadProjectData(); // Recarregar os dados para o novo site selecionado
+    });
+    
+    // Carregar dados do projeto e pilares
+    async function loadProjectData() {
+        try {
+            // Carregar dados do projeto
+            const projectResponse = await fetch(`/api/project/${projectId}`);
+            const projectData = await projectResponse.json();
+            
+            // Carregar pilares
+            const pillarsResponse = await fetch(`/api/project/${projectId}/pillars`);
+            const pillarsData = await pillarsResponse.json();
+            
+            // Carregar avaliações existentes para o site selecionado
+            const siteId = siteSelect.value;
+            const evaluationsResponse = await fetch(`/api/project/${projectId}/evaluations?site_id=${siteId}`);
+            const evaluationsData = await evaluationsResponse.json();
+            
+            // Criar mapa de avaliações por questão
+            const evaluationsMap = {};
+            evaluationsData.forEach(eval => {
+                evaluationsMap[eval.question_id] = eval.answer;
+            });
+            
+            // Limpar a lista de pilares
+            pillarsListDiv.innerHTML = '';
+            
+            // Renderizar pilares e questões
+            pillarsData.forEach(pillar => {
+                const pillarDiv = document.createElement('div');
+                pillarDiv.className = 'card mb-4';
+                pillarDiv.innerHTML = `
+                    <div class="card-header" style="background-color: #6f42c1;">
+                        <h3 class="mb-0 text-white">${pillar.name}</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60%">Pergunta</th>
+                                        <th style="width: 10%">Peso</th>
+                                        <th style="width: 30%">Resposta</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${pillar.questions.map(question => `
+                                        <tr>
+                                            <td>${question.text}</td>
+                                            <td>${question.weight}</td>
+                                            <td>
+                                                <select class="form-select question-select" 
+                                                        data-question-id="${question.id}"
+                                                        data-weight="${question.weight}">
+                                                    <option value="SIM" ${evaluationsMap[question.id] === 'SIM' ? 'selected' : ''}>SIM</option>
+                                                    <option value="PARCIALMENTE" ${evaluationsMap[question.id] === 'PARCIALMENTE' ? 'selected' : ''}>PARCIALMENTE</option>
+                                                    <option value="NAO" ${evaluationsMap[question.id] === 'NAO' ? 'selected' : ''}>NÃO</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                pillarsListDiv.appendChild(pillarDiv);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+        }
+    }
+    
+    // Inicializar URL do site
+    updateSiteUrl();
+    
+    // Carregar dados iniciais
+    loadProjectData();
+    
+    // Event Listeners
+    btnVoltar.addEventListener('click', () => {
+        window.location.href = `/project/${projectId}`;
+    });
+    
+    btnSalvar.addEventListener('click', () => {
+        saveModal.show();
+    });
+    
+    document.getElementById('btnConfirmarSalvar').addEventListener('click', async () => {
+        const siteId = siteSelect.value;
+        const evaluations = [];
+        
+        // Coletar todas as respostas
+        document.querySelectorAll('.question-select').forEach(select => {
+            evaluations.push({
+                question_id: parseInt(select.dataset.questionId),
+                answer: select.value,
+                weight: parseInt(select.dataset.weight)
+            });
+        });
+        
+        try {
+            const response = await fetch(`/api/project/${projectId}/evaluate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    site_id: siteId,
+                    evaluations: evaluations
+                })
+            });
+            
+            if (response.ok) {
+                window.location.href = `/project/${projectId}/results`;
+            } else {
+                console.error('Erro ao salvar avaliação');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar:', error);
+        }
+    });
+});
+</script>
+{% endblock %}

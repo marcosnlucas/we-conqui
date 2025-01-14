@@ -1,0 +1,433 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Projetos</h2>
+    
+    <button class="btn btn-primary mb-3" data-bs-toggle="collapse" data-bs-target="#newProjectForm">
+        Novo Projeto
+    </button>
+    
+    <div class="collapse mb-4" id="newProjectForm">
+        <div class="card">
+            <div class="card-body">
+                <form id="projectForm">
+                    <div class="mb-3">
+                        <label for="projectName" class="form-label">Nome do Projeto</label>
+                        <input type="text" class="form-control" id="projectName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="clientSiteName" class="form-label">Nome do Site do Cliente</label>
+                        <input type="text" class="form-control" id="clientSiteName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="clientSiteUrl" class="form-label">URL do Site do Cliente</label>
+                        <input type="url" class="form-control" id="clientSiteUrl" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Sites Concorrentes</label>
+                        <div id="competitorsList">
+                            <!-- Sites concorrentes serão adicionados aqui -->
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addCompetitorBtn">
+                            <i class="bi bi-plus-circle"></i> Adicionar Concorrente
+                        </button>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Criar Projeto</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="projectsList">
+        <!-- Lista de projetos será carregada aqui -->
+    </div>
+</div>
+
+<!-- Modal de edição de projeto -->
+<div class="modal fade" id="editProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Projeto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProjectForm">
+                    <input type="hidden" id="editProjectId">
+                    <div class="mb-3">
+                        <label for="editProjectName" class="form-label">Nome do Projeto</label>
+                        <input type="text" class="form-control" id="editProjectName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editClientSiteName" class="form-label">Nome do Site do Cliente</label>
+                        <input type="text" class="form-control" id="editClientSiteName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editClientSiteUrl" class="form-label">URL do Site do Cliente</label>
+                        <input type="url" class="form-control" id="editClientSiteUrl" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sites Concorrentes</label>
+                        <div id="editCompetitorsList">
+                            <!-- Sites concorrentes serão adicionados aqui -->
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addEditCompetitor()">
+                            <i class="bi bi-plus-circle"></i> Adicionar Concorrente
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditProject()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para concorrente -->
+<template id="competitorTemplate">
+    <div class="competitor-item card mb-2">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-5">
+                    <input type="text" class="form-control competitor-name" placeholder="Nome do Concorrente" required>
+                </div>
+                <div class="col-6">
+                    <input type="url" class="form-control competitor-url" placeholder="URL do Site" required>
+                </div>
+                <div class="col-1">
+                    <button type="button" class="btn btn-danger btn-sm remove-competitor">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Template para editar concorrente -->
+<template id="editCompetitorTemplate">
+    <div class="competitor-item card mb-2">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-5">
+                    <input type="text" class="form-control competitor-name" placeholder="Nome do Concorrente" required>
+                </div>
+                <div class="col-6">
+                    <input type="url" class="form-control competitor-url" placeholder="URL do Site" required>
+                </div>
+                <div class="col-1">
+                    <button type="button" class="btn btn-danger btn-sm remove-competitor">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const addCompetitor = () => {
+        const template = document.getElementById('competitorTemplate');
+        const clone = template.content.cloneNode(true);
+        
+        // Adiciona o event listener para o botão de remover
+        const removeBtn = clone.querySelector('.remove-competitor');
+        removeBtn.addEventListener('click', function() {
+            this.closest('.competitor-item').remove();
+        });
+        
+        document.getElementById('competitorsList').appendChild(clone);
+    }
+
+    const loadProjects = async () => {
+        try {
+            // Get settings to find template project
+            const settings = await fetch('/api/settings').then(r => r.json());
+            const projects = await fetch('/api/projects').then(r => r.json());
+            
+            const container = document.getElementById('projectsList');
+            
+            if (projects.length === 0) {
+                container.innerHTML = '<p class="text-muted">Nenhum projeto cadastrado</p>';
+                return;
+            }
+            
+            let html = '';
+            projects.forEach(project => {
+                const isTemplate = project.id === settings.template_project_id;
+                html += `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">${project.name}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <a href="${project.client_site_url}" target="_blank">${project.client_site_name}</a>
+                            </h6>
+                            
+                            <div class="mt-3">
+                                <strong>Concorrentes:</strong>
+                                ${project.competitors.length > 0 ? `
+                                <ul class="list-unstyled">
+                                    ${project.competitors.map(comp => `
+                                        <li>
+                                            <a href="${comp.url}" target="_blank">${comp.name}</a>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                                ` : `
+                                <p class="text-muted mt-2 mb-0">Nenhum concorrente cadastrado</p>
+                                `}
+                            </div>
+                            
+                            <div class="mt-3">
+                                <button onclick="editProject(${project.id})" class="btn btn-sm" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
+                                <a href="/project/${project.id}/evaluate" class="btn btn-sm" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                    <i class="bi bi-check2-square"></i> Avaliar
+                                </a>
+                                <a href="/project/${project.id}/results" class="btn btn-sm" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                    <i class="bi bi-graph-up"></i> Resultados
+                                </a>
+                                <a href="/project/${project.id}/crawl" class="btn btn-sm" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                    <i class="fas fa-spider"></i> WE Crawler
+                                </a>
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                        <i class="bi bi-gear"></i> Configurar
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="/project/${project.id}/pillars">
+                                                <i class="bi bi-columns-gap"></i> Pilares
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="/project/${project.id}/questions">
+                                                <i class="bi bi-question-circle"></i> Perguntas
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                ${!isTemplate ? `
+                                    <button onclick="copyTemplate(${project.id}, '${settings.template_project?.name || ''}')" class="btn btn-sm" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                        <i class="bi bi-files"></i> Copiar Modelo
+                                    </button>
+                                ` : `
+                                    <button class="btn btn-sm" style="background-color: #e9ecef; color: #6c757d; border-color: #e9ecef; cursor: not-allowed;" disabled>
+                                        <i class="bi bi-files"></i> Copiar Modelo
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        } catch (error) {
+            console.error('Erro ao carregar projetos:', error);
+            document.getElementById('projectsList').innerHTML = 
+                '<div class="alert alert-danger">Erro ao carregar projetos</div>';
+        }
+    }
+
+    const editProject = (projectId) => {
+        // Carrega os dados do projeto
+        fetch(`/api/projects/${projectId}`)
+            .then(response => response.json())
+            .then(project => {
+                document.getElementById('editProjectId').value = project.id;
+                document.getElementById('editProjectName').value = project.name;
+                document.getElementById('editClientSiteName').value = project.client_site_name;
+                document.getElementById('editClientSiteUrl').value = project.client_site_url;
+                
+                // Carrega os concorrentes
+                const container = document.getElementById('editCompetitorsList');
+                container.innerHTML = '';
+                
+                project.competitors.forEach(competitor => {
+                    const template = document.getElementById('editCompetitorTemplate');
+                    const clone = template.content.cloneNode(true);
+                    
+                    clone.querySelector('.competitor-name').value = competitor.name;
+                    clone.querySelector('.competitor-url').value = competitor.url;
+                    
+                    // Adiciona o event listener para o botão de remover
+                    const removeBtn = clone.querySelector('.remove-competitor');
+                    removeBtn.addEventListener('click', function() {
+                        this.closest('.competitor-item').remove();
+                    });
+                    
+                    container.appendChild(clone);
+                });
+                
+                // Abre o modal
+                new bootstrap.Modal(document.getElementById('editProjectModal')).show();
+            })
+            .catch(error => {
+                console.error('Erro ao carregar projeto:', error);
+                alert('Erro ao carregar projeto');
+            });
+    }
+
+    const addEditCompetitor = () => {
+        const template = document.getElementById('editCompetitorTemplate');
+        const clone = template.content.cloneNode(true);
+        
+        // Adiciona o event listener para o botão de remover
+        const removeBtn = clone.querySelector('.remove-competitor');
+        removeBtn.addEventListener('click', function() {
+            this.closest('.competitor-item').remove();
+        });
+        
+        document.getElementById('editCompetitorsList').appendChild(clone);
+    }
+
+    const saveEditProject = () => {
+        const projectId = document.getElementById('editProjectId').value;
+        const name = document.getElementById('editProjectName').value;
+        const clientSiteName = document.getElementById('editClientSiteName').value;
+        const clientSiteUrl = document.getElementById('editClientSiteUrl').value;
+        
+        // Coleta os dados dos concorrentes
+        const competitors = [];
+        document.querySelectorAll('#editCompetitorsList .competitor-item').forEach(item => {
+            competitors.push({
+                name: item.querySelector('.competitor-name').value,
+                url: item.querySelector('.competitor-url').value
+            });
+        });
+        
+        // Envia os dados para o servidor
+        fetch(`/api/projects/${projectId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name,
+                client_site_name: clientSiteName,
+                client_site_url: clientSiteUrl,
+                competitors
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao salvar projeto');
+            }
+            return response.json();
+        })
+        .then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('editProjectModal')).hide();
+            loadProjects(); // Recarrega a lista de projetos
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao salvar projeto');
+        });
+    }
+
+    const copyTemplate = async (projectId, templateProjectName) => {
+        // Ask for confirmation
+        if (!confirm(`Você tem certeza que deseja copiar os dados de Pilares e Perguntas do projeto "${templateProjectName}"?\n\nAtenção: Esta ação irá substituir todos os pilares e perguntas existentes.`)) {
+            return;
+        }
+
+        // Disable the button and show loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i> Copiando...';
+        
+        try {
+            const response = await fetch(`/api/projects/${projectId}/copy-template`, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao copiar template');
+            }
+            
+            const data = await response.json();
+            alert(data.message); // Show success message
+            window.location.href = `/project/${projectId}/pillars`; // Redirect to pillars page
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao copiar template');
+            // Restore button state
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+
+    // Event listener para o botão de adicionar concorrente
+    document.getElementById('addCompetitorBtn').addEventListener('click', addCompetitor);
+
+    // Event listener para o formulário
+    document.getElementById('projectForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('projectName').value;
+        const clientSiteName = document.getElementById('clientSiteName').value;
+        const clientSiteUrl = document.getElementById('clientSiteUrl').value;
+        
+        // Coleta os dados dos concorrentes
+        const competitors = [];
+        document.querySelectorAll('#competitorsList .competitor-item').forEach(item => {
+            competitors.push({
+                name: item.querySelector('.competitor-name').value,
+                url: item.querySelector('.competitor-url').value
+            });
+        });
+        
+        // Envia os dados para o servidor
+        fetch('/api/projects', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name,
+                client_site_name: clientSiteName,
+                client_site_url: clientSiteUrl,
+                competitors
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao criar projeto');
+            }
+            return response.json();
+        })
+        .then(() => {
+            // Limpa o formulário
+            this.reset();
+            document.getElementById('competitorsList').innerHTML = '';
+            
+            // Fecha o formulário
+            bootstrap.Collapse.getInstance(document.getElementById('newProjectForm')).hide();
+            
+            // Recarrega a lista de projetos
+            loadProjects();
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao criar projeto');
+        });
+    });
+
+    // Carrega os projetos inicialmente
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProjects();
+    });
+</script>
+{% endblock %}

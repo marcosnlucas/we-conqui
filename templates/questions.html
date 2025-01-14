@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <h1 class="text-center mb-4">Gerenciar Perguntas</h1>
+        
+        <!-- Formulário de Nova Pergunta -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Nova Pergunta</h5>
+                <button type="button" class="btn btn-conqui" data-bs-toggle="collapse" data-bs-target="#newQuestionForm">
+                    <i class="bi bi-plus"></i> Adicionar Pergunta
+                </button>
+            </div>
+            <div class="card-body collapse" id="newQuestionForm">
+                <form id="questionForm">
+                    <div class="mb-3">
+                        <label for="questionText" class="form-label">Pergunta</label>
+                        <input type="text" class="form-control" id="questionText" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="pillar" class="form-label">Pilar</label>
+                            <select class="form-select" id="pillar" required>
+                                {% for pillar in pillars %}
+                                <option value="{{ pillar.id }}">{{ pillar.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="weight" class="form-label">Peso (1-10)</label>
+                            <input type="number" class="form-control" id="weight" min="1" max="10" value="5" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-conqui">Salvar Pergunta</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista de Perguntas -->
+        <div id="questions-container" class="row">
+            <!-- As perguntas serão carregadas dinamicamente aqui -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição -->
+<div class="modal fade" id="editQuestionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Pergunta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editQuestionForm">
+                    <input type="hidden" id="editQuestionId">
+                    <div class="mb-3">
+                        <label for="editQuestionText" class="form-label">Pergunta</label>
+                        <input type="text" class="form-control" id="editQuestionText" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editPillar" class="form-label">Pilar</label>
+                            <select class="form-select" id="editPillar" required>
+                                {% for pillar in pillars %}
+                                <option value="{{ pillar.id }}">{{ pillar.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editWeight" class="form-label">Peso (1-10)</label>
+                            <input type="number" class="form-control" id="editWeight" min="1" max="10" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger me-2" id="btnDeleteQuestion">Excluir</button>
+                <button type="button" class="btn btn-conqui" id="btnSaveEdit">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/questions.js') }}"></script>
+{% endblock %}

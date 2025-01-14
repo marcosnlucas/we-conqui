@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  matriz-we-conqui:
+    build: .
+    container_name: matriz-we-conqui
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./instance:/app/instance
+    networks:
+      - web
+
+networks:
+  web:
+    external: true  # Usar a mesma rede do n8n

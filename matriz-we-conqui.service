@@ -1,0 +1,13 @@
+[Unit]
+Description=Matriz WE Conqui Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/matriz-we-conqui
+Environment="PATH=/var/www/matriz-we-conqui/venv/bin"
+ExecStart=/var/www/matriz-we-conqui/venv/bin/gunicorn -c gunicorn_config.py app:app
+
+[Install]
+WantedBy=multi-user.target

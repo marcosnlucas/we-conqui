@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Lista de projetos</h2>
+        <a href="/projects" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Novo Projeto
+        </a>
+    </div>
+    
+    <div class="row" id="projectsList">
+        <!-- Projetos serão carregados aqui -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function loadProjects() {
+        fetch('/api/projects')
+            .then(response => response.json())
+            .then(projects => {
+                const container = document.getElementById('projectsList');
+                
+                if (projects.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                Nenhum projeto cadastrado. Clique em "Novo Projeto" para começar!
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                projects.forEach(project => {
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header" style="background-color: #6f42c1; padding: 1rem;">
+                                    <h5 class="card-title mb-0" style="color: white;">${project.name}</h5>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-3">
+                                        <a href="${project.client_site_url}" target="_blank" class="text-muted text-decoration-none">
+                                            <i class="bi bi-link-45deg"></i> ${project.client_site_name}
+                                        </a>
+                                    </h6>
+                                    
+                                    <div>
+                                        <strong>
+                                            <i class="bi bi-building"></i> 
+                                            Concorrentes (${project.competitors.length})
+                                        </strong>
+                                        <ul class="list-unstyled mt-2 mb-0">
+                                            ${project.competitors.map(comp => `
+                                                <li class="mb-2">
+                                                    <a href="${comp.url}" target="_blank" class="text-decoration-none text-muted">
+                                                        <i class="bi bi-link-45deg"></i> ${comp.name}
+                                                    </a>
+                                                </li>
+                                            `).join('')}
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex justify-content-end align-items-center">
+                                        <a href="/project/${project.id}/results" class="btn btn-sm" style="background-color: #6f42c1; color: white;">
+                                            <i class="bi bi-graph-up"></i> Resultados
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Erro ao carregar projetos:', error);
+                document.getElementById('projectsList').innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger">
+                            Erro ao carregar projetos. Por favor, tente novamente.
+                        </div>
+                    </div>
+                `;
+            });
+    }
+    
+    loadProjects();
+});
+
+async function copyTemplateToProject(projectId) {
+    if (!confirm('Deseja copiar os pilares e questões do projeto modelo para este projeto? Esta ação irá substituir todos os pilares e questões existentes.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/projects/copy-template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ project_id: projectId })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Pilares e questões copiados com sucesso!');
+            location.reload();
+        } else {
+            alert(data.error || 'Erro ao copiar pilares e questões');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Erro ao copiar pilares e questões');
+    }
+}
+</script>
+{% endblock %}

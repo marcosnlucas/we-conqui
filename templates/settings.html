@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Configurações</h2>
+
+    <!-- Password Modal -->
+    <div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="passwordModalLabel">Autenticação Necessária</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="password">Senha:</label>
+                            <input type="password" class="form-control" id="password">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="verifyPassword()">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Content (initially hidden) -->
+    <div id="settingsContent" style="display: none;">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Logo</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="logoForm" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="logo" class="form-label">Selecione uma nova logo:</label>
+                                <input type="file" class="form-control" id="logo" name="logo" accept="image/*">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Atualizar Logo</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Favicon</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="faviconForm" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="favicon" class="form-label">Selecione um novo favicon:</label>
+                                <input type="file" class="form-control" id="favicon" name="favicon" accept="image/*">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Atualizar Favicon</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Projeto Modelo</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="templateProjectForm">
+                            <div class="mb-3">
+                                <label for="templateProject" class="form-label">Selecione o projeto modelo:</label>
+                                <select class="form-select" id="templateProject" name="templateProject">
+                                    <option value="">Nenhum</option>
+                                    {% for project in projects %}
+                                    <option value="{{ project.id }}" {% if settings.template_project_id == project.id %}selected{% endif %}>
+                                        {{ project.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Salvar Projeto Modelo</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Show password modal on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        var passwordModal = new bootstrap.Modal(document.getElementById('passwordModal'));
+        passwordModal.show();
+    });
+
+    // Password verification
+    async function verifyPassword() {
+        const password = document.getElementById('password').value;
+        
+        try {
+            const response = await fetch('/api/settings/verify-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: password })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('settingsContent').style.display = 'block';
+                bootstrap.Modal.getInstance(document.getElementById('passwordModal')).hide();
+            } else {
+                alert('Senha incorreta!');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Erro ao verificar a senha');
+        }
+    }
+
+    // Logo form submission
+    document.getElementById('logoForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        const logoFile = document.getElementById('logo').files[0];
+        if (!logoFile) {
+            alert('Por favor, selecione um arquivo');
+            return;
+        }
+        formData.append('logo', logoFile);
+        
+        try {
+            const response = await fetch('/api/settings/logo', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao atualizar a logo');
+            }
+            
+            const data = await response.json();
+            alert(data.message);
+            location.reload();
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Erro ao atualizar a logo');
+        }
+    });
+
+    // Favicon form submission
+    document.getElementById('faviconForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        const faviconFile = document.getElementById('favicon').files[0];
+        if (!faviconFile) {
+            alert('Por favor, selecione um arquivo');
+            return;
+        }
+        formData.append('favicon', faviconFile);
+        
+        try {
+            const response = await fetch('/api/settings/favicon', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao atualizar o favicon');
+            }
+            
+            const data = await response.json();
+            alert(data.message);
+            location.reload();
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Erro ao atualizar o favicon');
+        }
+    });
+
+    // Template project form submission
+    document.getElementById('templateProjectForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const projectId = document.getElementById('templateProject').value;
+        
+        try {
+            const response = await fetch('/api/settings/template-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ project_id: projectId })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert('Projeto modelo atualizado com sucesso!');
+            } else {
+                alert(data.error || 'Erro ao atualizar o projeto modelo');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Erro ao atualizar o projeto modelo');
+        }
+    });
+</script>
+{% endblock %}

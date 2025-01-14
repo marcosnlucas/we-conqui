@@ -1,0 +1,9 @@
+bind = "0.0.0.0:5001"
+workers = 3
+worker_class = "sync"
+timeout = 120
+keepalive = 5
+errorlog = "/var/log/matriz-we-conqui/error.log"
+accesslog = "/var/log/matriz-we-conqui/access.log"
+capture_output = True
+loglevel = "info"

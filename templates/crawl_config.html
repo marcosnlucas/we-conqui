@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>WE Crawler - Configuração</h2>
+    <p class="text-muted">Configure os parâmetros para rastrear o site</p>
+
+    <div class="card">
+        <div class="card-body">
+            <form id="crawl-form" method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Site para análise</label>
+                    <select name="site_id" class="form-select">
+                        <option value="">{{ project.client_site_name }} (Site Principal)</option>
+                        {% for site in project.competitor_sites %}
+                        <option value="{{ site.id }}">{{ site.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Máximo de Páginas</label>
+                            <input type="number" name="max_pages" class="form-control" value="20" min="1">
+                            <div class="form-text">Número máximo de páginas para analisar</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Profundidade Máxima</label>
+                            <input type="number" name="max_depth" class="form-control" value="2" min="1">
+                            <div class="form-text">Profundidade máxima de navegação</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Delay entre Requisições (segundos)</label>
+                            <input type="number" name="delay" class="form-control" value="1.0" min="0.1" step="0.1">
+                            <div class="form-text">Tempo de espera entre requisições</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Limiar de Similaridade</label>
+                            <input type="number" name="similarity_threshold" class="form-control" value="0.7" min="0.1" max="1.0" step="0.1">
+                            <div class="form-text">Limiar para agrupar palavras-chave similares (0.1 a 1.0)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Palavras-chave (opcional)</label>
+                    <input type="text" name="keywords" class="form-control">
+                    <div class="form-text">Lista de palavras-chave separadas por vírgula para filtrar páginas</div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('project_page', project_id=project.id) }}" class="btn btn-secondary">Voltar</a>
+                    <button type="submit" class="btn btn-primary">Cadastrar Análise</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if configs %}
+    <div class="mt-4">
+        <h3>Análises Cadastradas</h3>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Site</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for config in configs %}
+                    <tr data-config-id="{{ config.id }}" data-status="{{ config.status }}">
+                        <td>{{ config.site.name if config.site else project.client_site_name }}</td>
+                        <td>
+                            <span id="status-{{ config.id }}" class="badge {% if config.status == 'completed' %}bg-success
+                                         {% elif config.status == 'running' %}bg-primary
+                                         {% elif config.status == 'error' %}bg-danger
+                                         {% elif config.status == 'stopped' %}bg-warning
+                                         {% else %}bg-secondary{% endif %}">
+                                {{ config.status }}
+                            </span>
+                        </td>
+                        <td>{{ config.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm start-btn text-white" onclick="startCrawl({{ config.id }})" {% if config.status != 'pending' %}disabled{% endif %}>
+                                <i class="fas fa-play"></i> Iniciar
+                            </button>
+                            <button class="btn btn-warning btn-sm stop-btn text-white" onclick="stopCrawl({{ config.id }})" {% if config.status != 'running' %}disabled{% endif %}>
+                                <i class="fas fa-pause"></i> Parar
+                            </button>
+                            <button class="btn btn-success btn-sm continue-btn text-white" onclick="continueCrawl({{ config.id }})" {% if config.status != 'stopped' %}disabled{% endif %}>
+                                <i class="fas fa-play"></i> Continuar
+                            </button>
+                            {% if config.status == 'completed' %}
+                            <a href="{{ url_for('crawl_results', project_id=project.id, config_id=config.id) }}" class="btn btn-info btn-sm text-white">
+                                <i class="fas fa-chart-bar"></i> Ver Resultados
+                            </a>
+                            {% endif %}
+                            <button class="btn btn-danger btn-sm text-white" onclick="deleteCrawl({{ config.id }})">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                            <br>
+                            <small class="text-muted crawl-info" id="info-{{ config.id }}"></small>
+                            <div class="progress d-none" id="progress-{{ config.id }}">
+                                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" id="progress-bar-{{ config.id }}" style="width: 0%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+<style>
+    .btn:disabled {
+        opacity: 0.5;
+    }
+    .btn {
+        margin-right: 5px;
+    }
+    .progress {
+        height: 5px;
+        margin-top: 10px;
+        margin-bottom: 5px;
+    }
+</style>
+
+{% block extra_js %}
+<script>
+    // Adicionar project_id como variável global
+    const project_id = {{ project.id }};
+
+    // Função para criar uma nova linha na tabela
+    function addConfigRow(config) {
+        const tbody = document.querySelector('table tbody');
+        const tr = document.createElement('tr');
+        tr.dataset.configId = config.id;
+        tr.dataset.status = config.status;
+        
+        // Coluna do site
+        const siteTd = document.createElement('td');
+        // Pegar o nome do site do select
+        const siteSelect = document.querySelector('select[name="site_id"]');
+        const selectedOption = siteSelect.options[siteSelect.selectedIndex];
+        siteTd.textContent = selectedOption.text;
+        tr.appendChild(siteTd);
+        
+        // Coluna do status
+        const statusTd = document.createElement('td');
+        const statusSpan = document.createElement('span');
+        statusSpan.id = `status-${config.id}`;
+        statusSpan.className = 'badge bg-secondary';
+        statusSpan.textContent = config.status;
+        statusTd.appendChild(statusSpan);
+        tr.appendChild(statusTd);
+        
+        // Coluna da data
+        const dateTd = document.createElement('td');
+        const date = new Date();
+        dateTd.textContent = date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR');
+        tr.appendChild(dateTd);
+        
+        // Coluna das ações
+        const actionsTd = document.createElement('td');
+        
+        // Botão Iniciar
+        const startBtn = document.createElement('button');
+        startBtn.className = 'btn btn-primary btn-sm start-btn text-white';
+        startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar';
+        startBtn.onclick = () => startCrawl(config.id);
+        actionsTd.appendChild(startBtn);
+        
+        // Botão Parar
+        const stopBtn = document.createElement('button');
+        stopBtn.className = 'btn btn-warning btn-sm stop-btn text-white';
+        stopBtn.innerHTML = '<i class="fas fa-pause"></i> Parar';
+        stopBtn.onclick = () => stopCrawl(config.id);
+        stopBtn.disabled = true;
+        actionsTd.appendChild(stopBtn);
+        
+        // Botão Continuar
+        const continueBtn = document.createElement('button');
+        continueBtn.className = 'btn btn-success btn-sm continue-btn text-white';
+        continueBtn.innerHTML = '<i class="fas fa-play"></i> Continuar';
+        continueBtn.onclick = () => continueCrawl(config.id);
+        continueBtn.disabled = true;
+        actionsTd.appendChild(continueBtn);
+        
+        // Botão Excluir
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-danger btn-sm text-white';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Excluir';
+        deleteBtn.onclick = () => deleteCrawl(config.id);
+        actionsTd.appendChild(deleteBtn);
+        
+        // Linha de informação e barra de progresso
+        const br = document.createElement('br');
+        actionsTd.appendChild(br);
+        
+        const infoSpan = document.createElement('small');
+        infoSpan.className = 'text-muted crawl-info';
+        infoSpan.id = `info-${config.id}`;
+        actionsTd.appendChild(infoSpan);
+
+        // Adicionar barra de progresso
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'progress d-none';
+        progressDiv.id = `progress-${config.id}`;
+        
+        const progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar bg-success progress-bar-striped progress-bar-animated';
+        progressBar.style.width = '0%';
+        progressBar.id = `progress-bar-${config.id}`;
+        
+        progressDiv.appendChild(progressBar);
+        actionsTd.appendChild(progressDiv);
+        
+        tr.appendChild(actionsTd);
+        tbody.appendChild(tr);
+    }
+
+    // Função para atualizar o status do crawler
+    function updateCrawlStatus() {
+        fetch('/api/crawl/status')
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(config => {
+                const statusSpan = document.querySelector(`#status-${config.id}`);
+                if (statusSpan) {
+                    statusSpan.textContent = config.status;
+                    
+                    // Atualizar classe do badge
+                    statusSpan.className = 'badge ' + (
+                        config.status === 'completed' ? 'bg-success' :
+                        config.status === 'running' ? 'bg-primary' :
+                        config.status === 'error' ? 'bg-danger' :
+                        config.status === 'stopped' ? 'bg-warning' :
+                        'bg-secondary'
+                    );
+                    
+                    // Atualizar estado dos botões
+                    const row = statusSpan.closest('tr');
+                    const startBtn = row.querySelector('.start-btn');
+                    const stopBtn = row.querySelector('.stop-btn');
+                    const continueBtn = row.querySelector('.continue-btn');
+                    
+                    startBtn.disabled = config.status !== 'pending';
+                    stopBtn.disabled = config.status !== 'running';
+                    continueBtn.disabled = config.status !== 'stopped';
+                    
+                    // Atualizar botão de resultados
+                    if (config.status === 'completed') {
+                        const resultsBtn = row.querySelector('.btn-info');
+                        if (!resultsBtn) {
+                            const deleteBtn = row.querySelector('.btn-danger');
+                            const resultsLink = document.createElement('a');
+                            resultsLink.href = `/crawl/${project_id}/results/${config.id}`;
+                            resultsLink.className = 'btn btn-info btn-sm text-white';
+                            resultsLink.innerHTML = '<i class="fas fa-chart-bar"></i> Ver Resultados';
+                            row.querySelector('td:last-child').insertBefore(resultsLink, deleteBtn);
+                        }
+                    }
+                    
+                    // Atualizar informações do crawler e barra de progresso
+                    const infoSpan = document.querySelector(`#info-${config.id}`);
+                    const progressDiv = document.querySelector(`#progress-${config.id}`);
+                    const progressBar = document.querySelector(`#progress-bar-${config.id}`);
+                    
+                    if (infoSpan && progressDiv && progressBar) {
+                        if (config.status === 'running') {
+                            infoSpan.textContent = `Páginas visitadas: ${config.visited_pages || 0}. O crawler pode levar alguns minutos dependendo do tamanho do site.`;
+                            progressDiv.classList.remove('d-none');
+                            // Atualizar progresso baseado no max_pages
+                            const progress = (config.visited_pages / config.max_pages) * 100;
+                            progressBar.style.width = `${Math.min(progress, 100)}%`;
+                        } else if (config.status === 'completed') {
+                            infoSpan.textContent = `Análise concluída! ${config.visited_pages || 0} páginas analisadas.`;
+                            progressDiv.classList.add('d-none');
+                        } else if (config.status === 'error') {
+                            infoSpan.textContent = 'Erro durante a análise. Tente novamente.';
+                            progressDiv.classList.add('d-none');
+                        } else {
+                            infoSpan.textContent = '';
+                            progressDiv.classList.add('d-none');
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // Atualizar status a cada 2 segundos
+    setInterval(updateCrawlStatus, 2000);
+
+    // Função para salvar a configuração do crawler
+    document.getElementById('crawl-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch(`/api/crawl/${project_id}/save`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Limpar formulário
+                this.reset();
+                
+                // Adicionar linha na tabela
+                addConfigRow({
+                    id: data.config.id,
+                    site_name: data.config.site_name,
+                    status: 'pending',
+                    max_pages: data.config.max_pages
+                });
+            } else {
+                console.error('Erro ao salvar:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+
+    // Função para iniciar o crawler
+    function startCrawl(configId) {
+        fetch(`/api/crawl/${configId}/start`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateCrawlStatus();
+            }
+        });
+    }
+
+    // Função para parar o crawler
+    function stopCrawl(configId) {
+        fetch(`/api/crawl/${configId}/stop`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateCrawlStatus();
+            }
+        });
+    }
+
+    // Função para continuar o crawler
+    function continueCrawl(configId) {
+        fetch(`/api/crawl/${configId}/continue`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateCrawlStatus();
+            }
+        });
+    }
+
+    // Função para remover uma análise
+    function deleteCrawl(configId) {
+        if (confirm('Tem certeza que deseja remover esta análise?')) {
+            fetch(`/api/crawl/${configId}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const row = document.querySelector(`tr[data-config-id="${configId}"]`);
+                    row.remove();
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,136 @@
+/* Cores personalizadas */
+:root {
+    --primary: #6f42c1;
+    --primary-dark: #5a32a3;
+    --primary-light: #8250df;
+    --secondary: #b8a2e3;
+    --info: #9966cc;
+}
+
+/* Navbar */
+.navbar-dark.bg-primary {
+    background-color: var(--primary) !important;
+}
+
+/* Botões */
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.btn-info {
+    background-color: var(--info);
+    border-color: var(--info);
+}
+
+.btn-info:hover, .btn-info:focus {
+    background-color: var(--secondary);
+    border-color: var(--secondary);
+}
+
+.btn-conqui {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.btn-conqui:hover, .btn-conqui:focus {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: white;
+}
+
+.btn-outline-conqui {
+    color: var(--primary);
+    border-color: var(--primary);
+    background-color: transparent;
+}
+
+.btn-outline-conqui:hover, .btn-outline-conqui:focus {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.bg-conqui {
+    background-color: var(--primary) !important;
+}
+
+/* Links */
+a {
+    color: var(--primary);
+}
+
+a:hover {
+    color: var(--primary-dark);
+}
+
+/* Cards */
+.card-header {
+    background-color: var(--primary-light);
+    color: white;
+}
+
+/* Avaliação */
+.answer-btn {
+    width: 120px;
+    margin: 5px;
+}
+
+.answer-sim {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.answer-nao {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.answer-parcialmente {
+    background-color: var(--secondary);
+    border-color: var(--secondary);
+    color: #000;
+}
+
+.question-weight {
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* Pilares */
+.pillar-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+
+.pillar-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary);
+}
+
+/* Alertas */
+.alert-info {
+    background-color: var(--secondary);
+    border-color: var(--info);
+    color: var(--primary-dark);
+}
+
+/* Texto */
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Links nos cards */
+.card a.text-muted:hover {
+    color: var(--primary) !important;
+    text-decoration: none;
+}

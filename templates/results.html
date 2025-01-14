@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Resultados da Avaliação</h2>
+    
+    {% for site_data in sites_data %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header" style="background-color: {% if site_data.site.is_main %}var(--primary){% else %}var(--secondary){% endif %};">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0 text-white">{{ site_data.site.name }} {% if site_data.site.is_main %}(Site Principal){% endif %}</h3>
+                        <div class="progress" style="width: 200px; height: 20px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ site_data.total.percentage }}%; background-color: 
+                                 {% if site_data.total.percentage >= 80 %}#28a745
+                                 {% elif site_data.total.percentage >= 50 %}#ffc107
+                                 {% else %}#dc3545{% endif %};"
+                                 aria-valuenow="{{ site_data.total.percentage }}" 
+                                 aria-valuemin="0" aria-valuemax="100">
+                                {{ site_data.total.percentage }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <strong>Pontuação Ponderada:</strong> {{ site_data.total.weighted_score }} / {{ site_data.total.total_weight }}
+                    </p>
+                    <p class="mb-0">
+                        <strong>URL:</strong> <a href="{{ site_data.site.url }}" target="_blank">{{ site_data.site.url }}</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards dos Pilares -->
+    <div class="row mb-5">
+        <div class="col-md-12">
+            {% for pillar in site_data.pillars %}
+            <div class="card mb-4">
+                <div class="card-header" style="background-color: {% if site_data.site.is_main %}var(--primary){% else %}var(--secondary){% endif %};">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0 text-white">{{ pillar.name }} (Peso: {{ pillar.weight }} - {{ pillar.weight_percentage }}%)</h3>
+                        <div class="progress" style="width: 200px; height: 20px;">
+                            {% set percentage = (pillar.score / pillar.max_score * 100)|round|int if pillar.max_score > 0 else 0 %}
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ percentage }}%; background-color: 
+                                 {% if percentage >= 80 %}#28a745
+                                 {% elif percentage >= 50 %}#ffc107
+                                 {% else %}#dc3545{% endif %};"
+                                 aria-valuenow="{{ percentage }}" 
+                                 aria-valuemin="0" aria-valuemax="100">
+                                {{ percentage }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Pergunta</th>
+                                    <th>Peso</th>
+                                    <th>Resposta</th>
+                                    <th>Pontuação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for question in pillar.questions %}
+                                <tr>
+                                    <td>{{ question.text }}</td>
+                                    <td>{{ question.weight }}</td>
+                                    <td>
+                                        <span class="badge {% if question.answer == 'SIM' %}bg-success
+                                                         {% elif question.answer == 'NAO' %}bg-danger
+                                                         {% else %}bg-warning{% endif %}">
+                                            {{ question.answer }}
+                                        </span>
+                                    </td>
+                                    <td>{{ question.score }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Percentual do Peso do Pilar:</strong></td>
+                                    <td><strong>{{ pillar.weight_percentage }}%</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Percentual do Pilar:</strong></td>
+                                    <td><strong>{{ (pillar.score / pillar.max_score * 100)|round(1) if pillar.max_score > 0 else 0 }}%</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Gráficos Comparativos -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card mb-5">
+                <div class="card-header bg-conqui">
+                    <h3 class="mb-0 text-white">Comparativo entre Sites</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Tabela Comparativa -->
+                    <div class="table-responsive mb-5">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 200px;">Pergunta</th>
+                                    <th style="min-width: 100px;">Pilar</th>
+                                    {% for site_data in sites_data %}
+                                    <th style="min-width: 120px;">{{ site_data.site.name }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pillar in sites_data[0].pillars %}
+                                    {% set outer_loop = loop %}
+                                    {% for question in pillar.questions %}
+                                    {% set middle_loop = loop %}
+                                    <tr>
+                                        <td>{{ question.text }}</td>
+                                        <td>{{ pillar.name }}</td>
+                                        {% for site_data in sites_data %}
+                                            <td>
+                                                <span class="badge {% if site_data.pillars[outer_loop.index0].questions[middle_loop.index0].answer == 'SIM' %}bg-success
+                                                             {% elif site_data.pillars[outer_loop.index0].questions[middle_loop.index0].answer == 'NAO' %}bg-danger
+                                                             {% else %}bg-warning{% endif %}">
+                                                    {{ site_data.pillars[outer_loop.index0].questions[middle_loop.index0].answer }}
+                                                </span>
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Gráficos -->
+                    <div class="row">
+                        <div class="col-md-12 mb-4">
+                            <h4 class="mb-3">Pontuação Total</h4>
+                            <canvas id="totalScoreChart"></canvas>
+                        </div>
+                        <div class="col-md-12 mb-4">
+                            <h4 class="mb-3">Comparativo por Pilar</h4>
+                            <canvas id="pillarComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Espaço adicional no final da página -->
+    <div class="mb-5"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sitesData = {{ sites_data|tojson|safe }};
+    const sitesNames = sitesData.map(site => site.site.name);
+    const sitesScores = sitesData.map(site => site.total.percentage);
+
+    // Função para gerar tons de roxo
+    function getPurpleShade(index, total) {
+        // Site principal sempre usa o roxo mais escuro
+        if (index === 0) return {
+            bg: 'rgba(111, 66, 193, 0.6)',
+            border: 'rgb(111, 66, 193)'
+        };
+        
+        // Para os concorrentes, calcular tons mais claros
+        const baseHue = 270; // Roxo
+        const baseSaturation = 50;
+        const startLightness = 60;
+        const lightnessStep = (90 - startLightness) / (total - 1);
+        const lightness = startLightness + ((index - 1) * lightnessStep);
+        
+        return {
+            bg: `hsla(${baseHue}, ${baseSaturation}%, ${lightness}%, 0.6)`,
+            border: `hsl(${baseHue}, ${baseSaturation}%, ${lightness}%)`
+        };
+    }
+
+    // Gerar cores para cada site
+    const siteColors = sitesData.map((_, index) => getPurpleShade(index, sitesData.length));
+
+    // Gráfico de barras
+    new Chart(document.getElementById('totalScoreChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: sitesNames,
+            datasets: [{
+                data: sitesScores,
+                backgroundColor: siteColors.map(color => color.bg),
+                borderColor: siteColors.map(color => color.border),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Pontuação (%)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Dados para o gráfico de comparação por pilar
+    if (sitesData.length > 0) {
+        const pillarNames = sitesData[0].pillars.map(pillar => pillar.name);
+        const datasets = sitesData.map((site, index) => {
+            const color = getPurpleShade(index, sitesData.length);
+            return {
+                label: site.site.name,
+                data: site.pillars.map(pillar => (pillar.score / pillar.max_score * 100).toFixed(1)),
+                backgroundColor: color.bg.replace('0.6', '0.2'), // Mais transparente para o radar
+                borderColor: color.border,
+                borderWidth: 2,
+                fill: true
+            };
+        });
+        
+        new Chart(document.getElementById('pillarComparisonChart').getContext('2d'), {
+            type: 'radar',
+            data: {
+                labels: pillarNames,
+                datasets: datasets
+            },
+            options: {
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
